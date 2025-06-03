@@ -12,36 +12,28 @@
 // #define SMALL_MAX_SIZE 1024
 // #define ZONE_SIZE 128
 
+// Header placed at the beginning of each allocated block.
 typedef struct s_AllocHeader
 {
-	size_t size; // Size of the allocated block
+	size_t size;
+	struct s_AllocHeader * prev;
+	struct s_AllocHeader * next;
 } AllocHeader;
 
-// typedef struct s_AllocatedBlock
-// {
-// 	void * address;
-// 	size_t size;
-// 	struct s_AllocatedBlock * next;
-// } AllocatedBlock;
+// Get the address of the memory block following the header
+#define FROM_HEADER_TO_BUFFER_ADDR(header) ((void *)((char *)(header) + sizeof(AllocHeader)))
 
-// typedef struct s_AllocatedZone
-// {
-// 	int is_occupied[ZONE_SIZE];
-// 	int alloc_count;
-// 	void * address;
-// 	size_t size;
-// 	struct s_AllocatedZone * next;
-// } AllocatedZone;
+// Get the address of the header from the memory block address
+#define FROM_BUFFER_TO_HEADER_ADDR(buffer) ((AllocHeader *)((char *)(buffer) - sizeof(AllocHeader)))
 
 
 typedef struct s_FtMallocGlobal
 {
-	// AllocatedZone * tiny_zones;
-	// AllocatedZone * small_zones;
-	// AllocatedBlock * allocated_blocks;
+	AllocHeader * allocated_blocks;
 } FtMallocGlobal;
 
 extern FtMallocGlobal g_ft_malloc;
+
 
 void * allocate_memory(void * address, size_t size);
 

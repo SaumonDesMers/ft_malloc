@@ -52,19 +52,30 @@ void test_classic()
 
 	show_alloc_mem();
 
-	ptr = ft_realloc(ptr, 30);
+	ptr = ft_realloc(ptr, 40);
 	if (ptr == NULL)
 	{
 		printf("Memory reallocation failed\n");
 		return;
 	}
-	strcpy(ptr, "Hello, World! Reallocated!");
+	strcat(ptr, " Welcome to ft_malloc!");
 	printf("Reallocated memory at %p with content: %s\n", ptr, (char *)ptr);
 
 	show_alloc_mem();
 
 	ft_free(ptr);
 	printf("Freed memory at %p\n", ptr);
+
+	void * ptrs[10];
+	for (int i = 0; i < 10; i++)
+	{
+		ptrs[i] = ft_malloc(100);
+	}
+	show_alloc_mem();
+	for (int i = 0; i < 10; i++)
+	{
+		ft_free(ptrs[i]);
+	}
 }
 
 int main()

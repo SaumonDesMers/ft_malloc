@@ -1,18 +1,18 @@
 #include "malloc.h"
 
 FtMallocGlobal g_ft_malloc = {
-	// .allocated_blocks = NULL
+	.allocated_blocks = NULL
 };
 
 void show_alloc_mem()
 {
 	printf("Memory allocation status:\n");
-	// AllocatedBlock *current = g_ft_malloc.allocated_blocks;
-	// while (current != NULL)
-	// {
-	// 	printf("Block address: %p, size: %zu bytes\n", current->address, current->size);
-	// 	current = current->next;
-	// }
+	AllocHeader * current = g_ft_malloc.allocated_blocks;
+	while (current != NULL)
+	{
+		printf("Block address: %p, size: %zu bytes\n", FROM_HEADER_TO_BUFFER_ADDR(current), current->size);
+		current = current->next;
+	}
 }
 
 void * allocate_memory(void * address, size_t size)

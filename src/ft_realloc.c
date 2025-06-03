@@ -11,13 +11,17 @@ void * ft_realloc(void * ptr, size_t size)
 		ft_free(ptr);
 		return NULL;
 	}
-	AllocHeader * old_header = (AllocHeader *)((char *)ptr - sizeof(AllocHeader));
+
+	AllocHeader * old_header = FROM_BUFFER_TO_HEADER_ADDR(ptr);
 	void * new_address = ft_malloc(size);
 	if (new_address == NULL)
 	{
 		return NULL;
 	}
-	memcpy(new_address, ptr, old_header->size < size ? old_header->size : size);
+
+	size_t min_size = old_header->size < size ? old_header->size : size;
+	memcpy(new_address, ptr, min_size);
 	ft_free(ptr);
+	
 	return new_address;
 }

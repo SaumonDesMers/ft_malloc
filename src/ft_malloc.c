@@ -10,8 +10,14 @@ void * ft_malloc(size_t size)
 	}
 
 	AllocHeader * header = (AllocHeader *)address;
-	header->size = size; // Store the size in the header
-	address = (char *)address + sizeof(AllocHeader); // Adjust address to point to the usable memory
+	header->size = size;
+	header->prev = NULL;
+	header->next = g_ft_malloc.allocated_blocks;
+	g_ft_malloc.allocated_blocks = header;
+	if (header->next != NULL)
+	{
+		header->next->prev = header;
+	}
 
-	return address;
+	return FROM_HEADER_TO_BUFFER_ADDR(address);
 }
