@@ -2,7 +2,7 @@
 
 void ft_free(void * ptr)
 {
-	printf("ft_free called with ptr: %p\n", ptr);
+	// printf("ft_free called with ptr: %p\n", ptr);
 	if (ptr == NULL)
 	{
 		return;
@@ -23,7 +23,7 @@ void ft_free(void * ptr)
 			}
 			munmap(current->address, current->size);
 			munmap(current, sizeof(AllocatedBlock));
-			printf("Memory at %p freed successfully.\n", ptr);
+			// printf("Memory at %p freed successfully.\n", ptr);
 			return;
 		}
 		prev = current;

@@ -17,7 +17,7 @@ int add_allocated_block(void *address, size_t size)
 
 void * ft_malloc(size_t size)
 {
-	printf("ft_malloc called with size: %zu\n", size);
+	// printf("ft_malloc called with size: %zu\n", size);
 	void * address = allocate_memory(NULL, size);
 	if (address == MAP_FAILED)
 	{
@@ -29,6 +29,6 @@ void * ft_malloc(size_t size)
 		munmap(address, size);
 		return NULL;
 	}
-	printf("Memory allocated at %p, size: %zu bytes\n", address, size);
+	// printf("Memory allocated at %p, size: %zu bytes\n", address, size);
 	return address;
 }
