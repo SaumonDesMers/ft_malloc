@@ -6,8 +6,17 @@ void ft_free(void * ptr)
 	{
 		return;
 	}
-	AllocHeader * header = FROM_BUFFER_TO_HEADER_ADDR(ptr);
+
+	if (header->size <= TINY_MAX_SIZE)
+	{
+		free_block(&g_ft_malloc.tiny_zones, FROM_HEADER_TO_BUFFER_ADDR(header));
+	}
+	else if (header->size <= SMALL_MAX_SIZE)
+	{
+	}
 	
+	AllocHeader * header = FROM_BUFFER_TO_HEADER_ADDR(ptr);
+
 	if (header->prev)
 	{
 		header->prev->next = header->next;
@@ -16,12 +25,12 @@ void ft_free(void * ptr)
 	{
 		header->next->prev = header->prev;
 	}
-	if (g_ft_malloc.allocated_blocks == header)
+	if (g_ft_malloc.large_blocks == header)
 	{
-		g_ft_malloc.allocated_blocks = header->next;
+		g_ft_malloc.large_blocks = header->next;
 	}
 
-	if (munmap(header, header->size + sizeof(AllocHeader)) == -1)
+	if (munmap(header, header->size + ALIGNED_HEADER_SIZE) == -1)
 	{
 		perror("Memory deallocation failed");
 		return;

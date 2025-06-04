@@ -2,8 +2,9 @@ ifeq ($(HOSTTYPE),)
 	HOSTTYPE := $(shell uname -m)_$(shell uname -s)
 endif
 
-NAME		:= libft_malloc_$(HOSTTYPE).so
-TESTER_NAME	:= tester_ft_malloc
+TARGET			:= libft_malloc_$(HOSTTYPE).so
+LINK_TARGET		:= libft_malloc.so
+TESTER_TARGET	:= tester_ft_malloc
 
 CC			:= gcc
 CFLAGS		:= -Wall -Wextra -Werror -g
@@ -17,34 +18,32 @@ OBJ_DIR		:= obj
 OBJS		:= $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 DEP_DIR		:= dep
-DEP			:= $(SRC:$(SRC_DIR)/%.c=$(DEP_DIR)/%.d)
+DEPS		:= $(SRC:$(SRC_DIR)/%.c=$(DEP_DIR)/%.d)
 
 
-all: $(NAME)
+all: $(TARGET)
 
-$(NAME):	$(OBJS)
-			$(CC) $(CFLAGS) -shared -o $(NAME) $(OBJS)
-			ln -sf $(NAME) libft_malloc.so
+$(TARGET):	$(OBJS)
+			$(CC) $(CFLAGS) -shared -o $@ $^
+			ln -sf $(TARGET) $(LINK_TARGET)
 
--include $(DEP)
+-include $(DEPS)
 
 $(OBJ_DIR)/%.o:$(SRC_DIR)/%.c
 			@mkdir -p $(OBJ_DIR) $(DEP_DIR)
 			$(CC) $(CFLAGS) -fPIC -o $@ -MMD -MF $(DEP_DIR)/$*.d -I $(INC_DIR) -c $<
 
-$(TESTER_NAME): main.c
-#			$(CC) -g -o $(TESTER_NAME) main.c -L. -lft_malloc -I $(INC_DIR)
-			$(CC) -Wl,-rpath=/home/sgaubert/Documents/ft_malloc -g -o $(TESTER_NAME) main.c -L. -lft_malloc -I $(INC_DIR)
+$(TESTER_TARGET): main.c $(TARGET)
+			$(CC) -Wl,-rpath=. -g -o $(TESTER_TARGET) main.c -L. -lft_malloc -I $(INC_DIR)
 
-test: $(NAME) $(TESTER_NAME)
-			./$(TESTER_NAME)
+test: $(TESTER_TARGET)
+			./$(TESTER_TARGET)
 
 clean:
 			$(RM) $(OBJS)
 
 fclean:	clean
-			$(RM) $(NAME) $(TESTER_NAME)
-			$(RM) libft_malloc.so
+			$(RM) $(TARGET) $(TESTER_TARGET) $(LINK_TARGET)
 
 re:	fclean
 			$(MAKE) all
