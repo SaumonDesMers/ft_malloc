@@ -4,58 +4,30 @@ FtMallocGlobal g_ft_malloc = {
 	.large_blocks = NULL
 };
 
-void show_alloc_mem()
-{
-	// AllocHeader * blocks[3] = {
-	// 	g_ft_malloc.tiny_blocks,
-	// 	g_ft_malloc.small_blocks,
-	// 	g_ft_malloc.large_blocks
-	// };
-	// char * block_names[3] = {
-	// 	"TINY",
-	// 	"SMALL",
-	// 	"LARGE"
-	// };
-	// for (size_t i = 0; i < 3; i++)
-	// {
-	// 	printf("%s :\n", block_names[i]);
-	// 	AllocHeader * current = blocks[i];
-	// 	while (current != NULL)
-	// 	{
-	// 		printf("0x%lX - 0x%lX : %zu bytes\n",
-	// 			(__uint64_t)FROM_HEADER_TO_BUFFER_ADDR(current),
-	// 			(__uint64_t)FROM_HEADER_TO_BUFFER_ADDR(current) + current->size,
-	// 			current->size);
-	// 		current = current->next;
-	// 	}
-	// }
-}
-
 void * allocate_memory(void * address, size_t size)
 {
 	return mmap(address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 }
 
 
-AllocZone * add_alloc_zone(AllocZone ** first_zone, size_t block_size)
+AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_size)
 {
 	if (first_zone == NULL)
 	{
 		return NULL;
 	}
 
-	// Ensure that the block size is large enough to hold the AllocZone header.
-	assert(sizeof(AllocZone) < block_size * 2 && 
-		"AllocZone size must be less than twice the block size");
+	// Ensure that the block size is large enough to hold the AllocZoneHeader header.
+	assert(sizeof(AllocZoneHeader) < block_size && 
+		"AllocZoneHeader size must be less than the block size");
 
 	// Allocate a new zone of memory.
-	AllocZone * new_zone = (AllocZone *)allocate_memory(NULL, block_size * BLOCK_COUNT_IN_ZONE);
+	AllocZoneHeader * new_zone = (AllocZoneHeader *)allocate_memory(NULL, block_size * BLOCK_COUNT_IN_ZONE);
 	if (new_zone == MAP_FAILED)
 	{
 		return NULL;
 	}
 	new_zone->block_size = block_size;
-	new_zone->free_block_count = BLOCK_COUNT_IN_ZONE - 2; // The first four blocks are reserved for the header.
 
 	// Insert the new zone at the beginning of the linked list.
 	new_zone->prev = NULL;
@@ -66,19 +38,19 @@ AllocZone * add_alloc_zone(AllocZone ** first_zone, size_t block_size)
 		new_zone->next->prev = new_zone;
 	}
 
-	// Initialize the free blocks linked list.
-	for (size_t i = 0; i < BLOCK_COUNT_IN_ZONE; i++)
+	// Initialize the blocks linked list.
+	new_zone->used_blocks = NULL;
+	new_zone->free_blocks = (AllocBlockHeader *)((char *)new_zone + block_size);
+	for (size_t i = 1; i < BLOCK_COUNT_IN_ZONE - 1; i++)
 	{
-		new_zone->free_blocks[i] = i + 1;
+		AllocBlockHeader * block = (AllocBlockHeader *)((char *)new_zone + i * block_size);
+		block->next = (AllocBlockHeader *)((char *)new_zone + (i + 1) * block_size);
 	}
-	new_zone->free_blocks[0] = 2;
-	new_zone->free_blocks[1] = 0;
-	new_zone->free_blocks[BLOCK_COUNT_IN_ZONE - 1] = 0;
 
 	return new_zone;
 }
 
-void remove_alloc_zone(AllocZone ** first_zone, AllocZone * zone)
+void remove_alloc_zone(AllocZoneHeader ** first_zone, AllocZoneHeader * zone)
 {
 	if (first_zone == NULL || zone == NULL)
 	{
@@ -89,11 +61,11 @@ void remove_alloc_zone(AllocZone ** first_zone, AllocZone * zone)
 	{
 		*first_zone = zone->next;
 	}
-	if (zone->prev != NULL)
+	if (zone->prev)
 	{
 		zone->prev->next = zone->next;
 	}
-	if (zone->next != NULL)
+	if (zone->next)
 	{
 		zone->next->prev = zone->prev;
 	}
@@ -101,60 +73,68 @@ void remove_alloc_zone(AllocZone ** first_zone, AllocZone * zone)
 	munmap(zone, BLOCK_COUNT_IN_ZONE * zone->block_size);
 }
 
-void * alloc_block(AllocZone * zone, size_t alloc_size)
+void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 {
-	assert(alloc_size > ~(__uint16_t)0 &&
-		"Allocation size must be less than or equal to short max (65535 bytes)");
-
-	while (zone != NULL)
+	while (zone)
 	{
 		// Check if there are any free blocks in the zone.
-		if (zone->free_block_count > 0)
+		if (zone->free_blocks)
 		{
-			// Get the index of the first free block.
-			const size_t free_index = zone->free_blocks[0];
-			const void * block_address = (char *)zone + free_index * zone->block_size;
+			// Allocate a block from the free blocks linked list.
+			AllocBlockHeader * block = zone->free_blocks;
+			zone->free_blocks = block->next;
 
-			*(__uint16_t *)block_address = alloc_size; // Store the allocation size in the block header.
+			// Add the block to the used blocks linked list.
+			block->next = zone->used_blocks;
+			block->prev = NULL;
+			zone->used_blocks = block;
+			if (zone->used_blocks->next)
+			{
+				zone->used_blocks->next->prev = zone->used_blocks;
+			}
 
-			zone->free_blocks[0] = zone->free_blocks[free_index]; // Update the head of the free blocks list.
-			zone->free_blocks[free_index] = 0; // Mark the block as allocated.
+			block->size = alloc_size;
 
-			zone->free_block_count--;
+			g_ft_malloc.total_allocated_by_user += alloc_size;
 
-			return (char *)block_address + 2; // Return the address of the allocated block, skipping the header.
+			return FROM_HEADER_TO_BUFFER_ADDR(block);
 		}
 		zone = zone->next;
 	}
 	return NULL;
 }
 
-void free_block(AllocZone ** first_zone, void * block_address)
+void free_block(AllocZoneHeader ** first_zone, AllocBlockHeader * block_address)
 {
-	if (block_address == NULL)
-	{
-		return;
-	}
-
-	block_address = (char *)block_address - 2; // Adjust to get the address of the block header.
-
-	AllocZone * zone = *first_zone;
-	while (zone != NULL)
+	AllocZoneHeader * zone = *first_zone;
+	while (zone)
 	{
 		// Check if the block address is within the zone.
 		if ((char *)block_address >= (char *)zone &&
 			(char *)block_address < (char *)zone + BLOCK_COUNT_IN_ZONE * zone->block_size)
 		{
-			// Calculate the index of the block in the zone.
-			size_t block_index = ((char *)block_address - (char *)zone) / zone->block_size;
+			// Remove the block from the used blocks list.
+			if (block_address == zone->used_blocks)
+			{
+				zone->used_blocks = block_address->next;
+			}
+			if (block_address->prev)
+			{
+				block_address->prev->next = block_address->next;
+			}
+			if (block_address->next)
+			{
+				block_address->next->prev = block_address->prev;
+			}
 
-			// Add the block back to the linked list of free blocks.
-			zone->free_blocks[block_index] = zone->free_blocks[0];
-			zone->free_blocks[0] = block_index;
+			// Add the block to the free blocks list.
+			block_address->next = zone->free_blocks;
+			block_address->prev = NULL;
+			zone->free_blocks = block_address;
 
-			zone->free_block_count++;
+			g_ft_malloc.total_allocated_by_user -= block_address->size;
 
-			if (zone->free_block_count == BLOCK_COUNT_IN_ZONE - 2)
+			if (zone->used_blocks == NULL)
 			{
 				// If all blocks are free, remove the zone.
 				remove_alloc_zone(first_zone, zone);

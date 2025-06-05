@@ -10,7 +10,7 @@ CC			:= gcc
 CFLAGS		:= -Wall -Wextra -Werror -g
 
 SRC_DIR		:= src
-SRCS		:= $(patsubst %, $(SRC_DIR)/%, ft_malloc.c ft_realloc.c ft_free.c utils.c)
+SRCS		:= $(patsubst %, $(SRC_DIR)/%, ft_malloc.c ft_realloc.c ft_free.c show_alloc_mem.c utils.c)
 
 INC_DIR 	:= include
 
