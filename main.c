@@ -6,7 +6,7 @@
 
 #define TEST_COUNT 30000
 
-void test_perf(
+void unit_test_perf(
 	void * (*malloc_func)(size_t size),
 	void (*free_func)(void * ptr),
 	void * (*realloc_func)(void * ptr, size_t size),
@@ -21,14 +21,36 @@ void test_perf(
 	}
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
-		ptrs[i] = realloc_func(ptrs[i], sizes[i] * 2);
-		// memset(ptrs[i], 0, sizes[i] * 2);
+		const float factor = (rand() % 100) / 50.0f;
+		const size_t new_size = sizes[i] * factor;
+
+		ptrs[i] = realloc_func(ptrs[i], new_size);
+		// memset(ptrs[i], 0, new_size);
 	}
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
 		free_func(ptrs[i]);
 	}
 	free_func(ptrs);
+}
+
+void test_perf()
+{
+	size_t * sizes = malloc(TEST_COUNT * sizeof(size_t));
+	for (int i = 0; i < TEST_COUNT; i++)
+	{
+		sizes[i] = (rand() % 10000) + 1;
+	}
+
+	double start_time = (clock() / (double)CLOCKS_PER_SEC);
+	unit_test_perf(ft_malloc, ft_free, ft_realloc, sizes);
+	double end_time = (clock() / (double)CLOCKS_PER_SEC);
+	printf("ft_malloc ft_free: %.2f seconds\n", end_time - start_time);
+
+	start_time = (clock() / (double)CLOCKS_PER_SEC);
+	unit_test_perf(malloc, free, realloc, sizes);
+	end_time = (clock() / (double)CLOCKS_PER_SEC);
+	printf("malloc free: %.2f seconds\n", end_time - start_time);
 }
 
 void test_classic()
@@ -54,40 +76,50 @@ void test_classic()
 	ft_free(ptr);
 	printf("Freed memory at %p\n", ptr);
 
+	//#########################################################
+
 	void * ptrs[20];
 	for (int i = 0; i < 20; i++)
 	{
-		ptrs[i] = ft_malloc(rand() % 10000 + 1);
+		ptrs[i] = ft_malloc(rand() % 3000 + 1);
 	}
+	printf("\n");
 	show_alloc_mem();
 	for (int i = 0; i < 20; i++)
 	{
 		ft_free(ptrs[i]);
 	}
+
+	//#########################################################
+
+	size_t size_count = 100000;
+	size_t * sizes = malloc(size_count * sizeof(size_t));
+	for (int i = 0; i < size_count; i++)
+	{
+		sizes[i] = (rand() % 10000) + 1;
+	}
+
+	void ** _ptrs = ft_malloc(size_count * sizeof(void *));
+	for (int i = 0; i < size_count; i++)
+	{
+		_ptrs[i] = ft_malloc(sizes[i]);
+	}
+	printf("\n");
+	show_alloc_mem_stat();
+	for (int i = 0; i < size_count; i++)
+	{
+		ft_free(_ptrs[i]);
+	}
+	ft_free(_ptrs);
 }
 
 int main()
 {
 	srand((unsigned int)time(NULL));
 
-	// test_classic();
+	test_classic();
+	// test_perf();
 
-
-	size_t * sizes = malloc(TEST_COUNT * sizeof(size_t));
-	for (int i = 0; i < TEST_COUNT; i++)
-	{
-		sizes[i] = (rand() % 10000) + 1;
-	}
-
-	double start_time = (clock() / (double)CLOCKS_PER_SEC);
-	test_perf(ft_malloc, ft_free, ft_realloc, sizes);
-	double end_time = (clock() / (double)CLOCKS_PER_SEC);
-	printf("ft_malloc ft_free: %.2f seconds\n", end_time - start_time);
-
-	start_time = (clock() / (double)CLOCKS_PER_SEC);
-	test_perf(malloc, free, realloc, sizes);
-	end_time = (clock() / (double)CLOCKS_PER_SEC);
-	printf("malloc free: %.2f seconds\n", end_time - start_time);
 
 	return 0;
 }

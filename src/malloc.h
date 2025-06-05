@@ -20,7 +20,12 @@
 #define TINY_ALLOC_SIZE (TINY_BLOCK_SIZE - ALIGNED_HEADER_SIZE)
 #define SMALL_BLOCK_SIZE 2048
 #define SMALL_ALLOC_SIZE (SMALL_BLOCK_SIZE - ALIGNED_HEADER_SIZE)
-#define BLOCK_COUNT_IN_ZONE 256
+#define MIN_BLOCK_COUNT_IN_ZONE 256
+
+#define MEM_USED_BY_ZONE_HEADERS(block_size) \
+	((block_size) + ALIGNED_HEADER_SIZE * (MIN_BLOCK_COUNT_IN_ZONE - 1))
+
+struct s_AllocZoneHeader;
 
 // Header placed at the beginning of each allocated block.
 typedef struct s_AllocBlockHeader
@@ -28,6 +33,7 @@ typedef struct s_AllocBlockHeader
 	size_t size;
 	struct s_AllocBlockHeader * prev;
 	struct s_AllocBlockHeader * next;
+	struct s_AllocZoneHeader * zone; // Address of the zone this block belongs to, if applicable.
 } AllocBlockHeader;
 
 // Get the address of the memory block following the header
@@ -36,16 +42,20 @@ typedef struct s_AllocBlockHeader
 // Get the address of the header from the memory block address
 #define FROM_BUFFER_TO_HEADER_ADDR(buffer) ((AllocBlockHeader *)((char *)(buffer) - ALIGNED_HEADER_SIZE))
 
-// Header for alloc zones, which are a pool of memory blocks of the same size.
-// Each zone contains a linked list of free blocks and a linked list of used blocks.
+// Header for alloc zones, which are pools of memory blocks of the same size.
 // The header is placed in the first block of each zone.
+// Each zone contains a linked list of free blocks and a linked list of used blocks.
 typedef struct s_AllocZoneHeader
 {
 	struct s_AllocZoneHeader * prev;
 	struct s_AllocZoneHeader * next;
-	size_t block_size;
 	AllocBlockHeader * free_blocks;
 	AllocBlockHeader * used_blocks;
+
+	size_t block_size;
+	size_t block_count;
+	size_t total_allocated;
+	size_t total_allocated_used;
 
 } AllocZoneHeader;
 
@@ -54,7 +64,15 @@ typedef struct s_FtMallocGlobal
 	AllocZoneHeader * tiny_zones;
 	AllocZoneHeader * small_zones;
 	AllocBlockHeader * large_blocks;
-	size_t total_allocated_by_user;
+
+	size_t total_allocated;
+	size_t total_allocated_used;
+	size_t tiny_zone_count;
+	size_t tiny_block_count;
+	size_t small_zone_count;
+	size_t small_block_count;
+	size_t large_block_count;
+
 } FtMallocGlobal;
 
 extern FtMallocGlobal g_ft_malloc;
@@ -66,7 +84,7 @@ AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_siz
 void remove_alloc_zone(AllocZoneHeader ** first_zone, AllocZoneHeader * zone);
 
 void * alloc_block(AllocZoneHeader * first_zone, size_t alloc_size);
-void free_block(AllocZoneHeader ** first_zone, AllocBlockHeader * block_address);
+void free_block(AllocBlockHeader * block_address);
 
 void * ft_malloc(size_t size);
 void ft_free(void * ptr);

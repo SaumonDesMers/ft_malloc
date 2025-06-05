@@ -1,7 +1,17 @@
 #include "malloc.h"
 
 FtMallocGlobal g_ft_malloc = {
-	.large_blocks = NULL
+	.tiny_zones = NULL,
+	.small_zones = NULL,
+	.large_blocks = NULL,
+
+	.total_allocated = 0,
+	.total_allocated_used = 0,
+	.tiny_zone_count = 0,
+	.tiny_block_count = 0,
+	.small_zone_count = 0,
+	.small_block_count = 0,
+	.large_block_count = 0
 };
 
 void * allocate_memory(void * address, size_t size)
@@ -22,12 +32,18 @@ AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_siz
 		"AllocZoneHeader size must be less than the block size");
 
 	// Allocate a new zone of memory.
-	AllocZoneHeader * new_zone = (AllocZoneHeader *)allocate_memory(NULL, block_size * BLOCK_COUNT_IN_ZONE);
+	size_t zone_size = ALIGN(block_size * MIN_BLOCK_COUNT_IN_ZONE, sysconf(_SC_PAGESIZE));
+	AllocZoneHeader * new_zone = (AllocZoneHeader *)allocate_memory(NULL, zone_size);
 	if (new_zone == MAP_FAILED)
 	{
 		return NULL;
 	}
 	new_zone->block_size = block_size;
+	new_zone->block_count = zone_size / block_size;
+	new_zone->total_allocated = zone_size;
+	new_zone->total_allocated_used = 0;
+
+	g_ft_malloc.total_allocated += zone_size;
 
 	// Insert the new zone at the beginning of the linked list.
 	new_zone->prev = NULL;
@@ -41,11 +57,16 @@ AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_siz
 	// Initialize the blocks linked list.
 	new_zone->used_blocks = NULL;
 	new_zone->free_blocks = (AllocBlockHeader *)((char *)new_zone + block_size);
-	for (size_t i = 1; i < BLOCK_COUNT_IN_ZONE - 1; i++)
+	for (size_t i = 1; i < new_zone->block_count - 1; i++)
 	{
 		AllocBlockHeader * block = (AllocBlockHeader *)((char *)new_zone + i * block_size);
 		block->next = (AllocBlockHeader *)((char *)new_zone + (i + 1) * block_size);
+		block->zone = new_zone;
 	}
+	// Special case for the last block.
+	AllocBlockHeader * last_block = (AllocBlockHeader *)((char *)new_zone + (new_zone->block_count - 1) * block_size);
+	last_block->next = NULL;
+	last_block->zone = new_zone;
 
 	return new_zone;
 }
@@ -70,7 +91,9 @@ void remove_alloc_zone(AllocZoneHeader ** first_zone, AllocZoneHeader * zone)
 		zone->next->prev = zone->prev;
 	}
 
-	munmap(zone, BLOCK_COUNT_IN_ZONE * zone->block_size);
+	g_ft_malloc.total_allocated -= zone->total_allocated;
+
+	munmap(zone, zone->total_allocated);
 }
 
 void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
@@ -95,7 +118,8 @@ void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 
 			block->size = alloc_size;
 
-			g_ft_malloc.total_allocated_by_user += alloc_size;
+			zone->total_allocated_used += alloc_size;
+			g_ft_malloc.total_allocated_used += alloc_size;
 
 			return FROM_HEADER_TO_BUFFER_ADDR(block);
 		}
@@ -104,45 +128,34 @@ void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 	return NULL;
 }
 
-void free_block(AllocZoneHeader ** first_zone, AllocBlockHeader * block_address)
+void free_block(AllocBlockHeader * block)
 {
-	AllocZoneHeader * zone = *first_zone;
-	while (zone)
+	if (block == NULL || block->zone == NULL)
 	{
-		// Check if the block address is within the zone.
-		if ((char *)block_address >= (char *)zone &&
-			(char *)block_address < (char *)zone + BLOCK_COUNT_IN_ZONE * zone->block_size)
-		{
-			// Remove the block from the used blocks list.
-			if (block_address == zone->used_blocks)
-			{
-				zone->used_blocks = block_address->next;
-			}
-			if (block_address->prev)
-			{
-				block_address->prev->next = block_address->next;
-			}
-			if (block_address->next)
-			{
-				block_address->next->prev = block_address->prev;
-			}
-
-			// Add the block to the free blocks list.
-			block_address->next = zone->free_blocks;
-			block_address->prev = NULL;
-			zone->free_blocks = block_address;
-
-			g_ft_malloc.total_allocated_by_user -= block_address->size;
-
-			if (zone->used_blocks == NULL)
-			{
-				// If all blocks are free, remove the zone.
-				remove_alloc_zone(first_zone, zone);
-			}
-
-			return;
-		}
-		zone = zone->next;
+		printf("Error: Attempt to free a block with no zone.\n");
+		printf("block size: %zu, zone address: %p\n", block->size, block->zone);
+		return;
 	}
-	fprintf(stderr, "Error: Attempted to free a block not managed by the allocator.\n");
+	// Remove the block from the used blocks list.
+	if (block == block->zone->used_blocks)
+	{
+		block->zone->used_blocks = block->next;
+	}
+	if (block->prev)
+	{
+		block->prev->next = block->next;
+	}
+	if (block->next)
+	{
+		block->next->prev = block->prev;
+	}
+
+	// Add the block to the free blocks list.
+	block->next = block->zone->free_blocks;
+	block->prev = NULL;
+	block->zone->free_blocks = block;
+
+	// Update statistics.
+	block->zone->total_allocated_used -= block->size;
+	g_ft_malloc.total_allocated_used -= block->size;
 }

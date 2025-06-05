@@ -18,10 +18,22 @@ void * ft_realloc(void * ptr, size_t size)
 		return ptr;
 	}
 
-	if ((header->size <= TINY_ALLOC_SIZE && size <= TINY_ALLOC_SIZE) ||
-	    (header->size <= SMALL_ALLOC_SIZE && size <= SMALL_ALLOC_SIZE))
+	if (header->size <= TINY_ALLOC_SIZE && size <= TINY_ALLOC_SIZE)
 	{
-		// If the size is still within the tiny or small allocation size, we can reuse the block.
+		int size_diff = header->size - size;
+		header->size = size;
+		g_ft_malloc.total_allocated_used -= size_diff;
+
+
+
+		return ptr;
+	}
+
+	if (header->size <= SMALL_ALLOC_SIZE && header->size > TINY_ALLOC_SIZE && size <= SMALL_ALLOC_SIZE)
+	{
+		int size_diff = header->size - size;
+		header->size = size;
+		g_ft_malloc.total_allocated_used -= size_diff;
 		return ptr;
 	}
 

@@ -11,12 +11,24 @@ void ft_free(void * ptr)
 
 	if (header->size <= TINY_ALLOC_SIZE)
 	{
-		free_block(&g_ft_malloc.tiny_zones, header);
+		free_block(header);
+		if (header->zone->used_blocks == NULL)
+		{
+			remove_alloc_zone(&g_ft_malloc.tiny_zones, header->zone);
+			g_ft_malloc.tiny_zone_count--;
+		}
+		g_ft_malloc.tiny_block_count--;
 		return;
 	}
 	else if (header->size <= SMALL_ALLOC_SIZE)
 	{
-		free_block(&g_ft_malloc.small_zones, header);
+		free_block(header);
+		if (header->zone->used_blocks == NULL)
+		{
+			remove_alloc_zone(&g_ft_malloc.small_zones, header->zone);
+			g_ft_malloc.small_zone_count--;
+		}
+		g_ft_malloc.small_block_count--;
 		return;
 	}
 	
@@ -33,9 +45,8 @@ void ft_free(void * ptr)
 		header->next->prev = header->prev;
 	}
 
-	g_ft_malloc.total_allocated_by_user -= header->size;
-	if (munmap(header, header->size + ALIGNED_HEADER_SIZE) == -1)
-	{
-		return;
-	}
+	g_ft_malloc.total_allocated_used -= header->size;
+	g_ft_malloc.total_allocated -= ALIGN(header->size + ALIGNED_HEADER_SIZE, sysconf(_SC_PAGESIZE));
+	g_ft_malloc.large_block_count--;
+	munmap(header, header->size + ALIGNED_HEADER_SIZE);
 }
