@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <sys/mman.h>
 #include <assert.h>
+#include <pthread.h>
 
 #define MIN_ALIGNMENT 16
 
@@ -63,6 +64,8 @@ typedef struct s_FtMallocGlobal
 	AllocZoneHeader * small_zones;
 	AllocBlockHeader * large_blocks;
 
+	pthread_mutex_t mutex;
+
 	size_t tiny_zone_count;
 	size_t tiny_block_count;
 	size_t tiny_allocated;
@@ -90,7 +93,8 @@ void remove_alloc_zone(AllocZoneHeader ** first_zone, AllocZoneHeader * zone);
 void * alloc_block(AllocZoneHeader * first_zone, size_t alloc_size);
 void free_block(AllocBlockHeader * block_address);
 
-void * ft_malloc(size_t size);
-void ft_free(void * ptr);
+void * intern_malloc(size_t size);
+void * intern_realloc(void * ptr, size_t size);
+void intern_free(void * ptr);
 
 #endif // MALLOC_H

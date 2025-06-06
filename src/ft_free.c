@@ -1,12 +1,19 @@
 #include "malloc.h"
 
-void ft_free(void * ptr)
+void free(void * ptr)
 {
 	if (ptr == NULL)
 	{
 		return;
 	}
 
+	pthread_mutex_lock(&g_ft_malloc.mutex);
+	intern_free(ptr);
+	pthread_mutex_unlock(&g_ft_malloc.mutex);
+}
+
+void intern_free(void * ptr)
+{
 	AllocBlockHeader * header = FROM_BUFFER_TO_HEADER_ADDR(ptr);
 
 	if (header->size <= TINY_ALLOC_SIZE)

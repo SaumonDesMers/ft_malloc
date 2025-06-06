@@ -1,6 +1,14 @@
 #include "malloc.h"
 
-void * ft_malloc(size_t size)
+void * malloc(size_t size)
+{
+	pthread_mutex_lock(&g_ft_malloc.mutex);
+	void * address = intern_malloc(size);
+	pthread_mutex_unlock(&g_ft_malloc.mutex);
+	return address;
+}
+
+void * intern_malloc(size_t size)
 {
 	if (size <= TINY_ALLOC_SIZE)
 	{

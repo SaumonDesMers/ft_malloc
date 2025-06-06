@@ -5,6 +5,8 @@ FtMallocGlobal g_ft_malloc = {
 	.small_zones = NULL,
 	.large_blocks = NULL,
 
+	.mutex = PTHREAD_MUTEX_INITIALIZER,
+
 	.tiny_zone_count = 0,
 	.tiny_block_count = 0,
 	.tiny_allocated = 0,

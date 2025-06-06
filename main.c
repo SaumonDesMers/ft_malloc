@@ -6,6 +6,10 @@
 
 #define TEST_COUNT 10000
 
+extern void * __libc_malloc(size_t size);
+extern void __libc_free(void * ptr);
+extern void * __libc_realloc(void * ptr, size_t size);
+
 void unit_test_perf(
 	void * (*malloc_func)(size_t size),
 	void (*free_func)(void * ptr),
@@ -36,6 +40,7 @@ void unit_test_perf(
 
 void test_perf()
 {
+
 	size_t * sizes = malloc(TEST_COUNT * sizeof(size_t));
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
@@ -43,19 +48,19 @@ void test_perf()
 	}
 
 	double start_time = (clock() / (double)CLOCKS_PER_SEC);
-	unit_test_perf(ft_malloc, ft_free, ft_realloc, sizes);
+	unit_test_perf(malloc, free, realloc, sizes);
 	double end_time = (clock() / (double)CLOCKS_PER_SEC);
 	printf("ft_malloc ft_free: %.2f seconds\n", end_time - start_time);
 
 	start_time = (clock() / (double)CLOCKS_PER_SEC);
-	unit_test_perf(malloc, free, realloc, sizes);
+	unit_test_perf(__libc_malloc, __libc_free, __libc_realloc, sizes);
 	end_time = (clock() / (double)CLOCKS_PER_SEC);
 	printf("malloc free: %.2f seconds\n", end_time - start_time);
 }
 
 void test_classic()
 {
-	void * ptr = ft_malloc(15);
+	void * ptr = malloc(15);
 	if (ptr == NULL)
 	{
 		printf("Memory allocation failed\n");
@@ -64,7 +69,7 @@ void test_classic()
 	strcpy(ptr, "Hello, World!");
 	printf("Allocated memory at %p with content: %s\n", ptr, (char *)ptr);
 
-	ptr = ft_realloc(ptr, 40);
+	ptr = realloc(ptr, 40);
 	if (ptr == NULL)
 	{
 		printf("Memory reallocation failed\n");
@@ -73,7 +78,7 @@ void test_classic()
 	strcat(ptr, " Welcome to ft_malloc!");
 	printf("Reallocated memory at %p with content: %s\n", ptr, (char *)ptr);
 
-	ptr = ft_realloc(ptr, 10000);
+	ptr = realloc(ptr, 10000);
 	if (ptr == NULL)
 	{
 		printf("Memory reallocation failed\n");
@@ -82,7 +87,7 @@ void test_classic()
 	strcat(ptr, " This is a large allocation test.");
 	printf("Reallocated memory at %p with content: %s\n", ptr, (char *)ptr);
 
-	ft_free(ptr);
+	free(ptr);
 	printf("Freed memory at %p\n", ptr);
 
 	//#########################################################
@@ -90,45 +95,45 @@ void test_classic()
 	void * ptrs[20];
 	for (int i = 0; i < 20; i++)
 	{
-		ptrs[i] = ft_malloc(rand() % 7000 + 1);
+		ptrs[i] = malloc(rand() % 7000 + 1);
 	}
 	printf("\n");
 	show_alloc_mem();
 	for (int i = 0; i < 20; i++)
 	{
-		ft_free(ptrs[i]);
+		free(ptrs[i]);
 	}
 
 	//#########################################################
 
 	size_t size_count = 10000;
-	size_t * sizes = ft_malloc(size_count * sizeof(size_t));
+	size_t * sizes = malloc(size_count * sizeof(size_t));
 	for (int i = 0; i < size_count; i++)
 	{
 		sizes[i] = (rand() % 100000) + 1;
 	}
 
-	void ** _ptrs = ft_malloc(size_count * sizeof(void *));
+	void ** _ptrs = malloc(size_count * sizeof(void *));
 	for (int i = 0; i < size_count; i++)
 	{
-		_ptrs[i] = ft_malloc(sizes[i]);
+		_ptrs[i] = malloc(sizes[i]);
 	}
 	printf("\n");
 	show_alloc_mem_stat();
 	for (int i = 0; i < size_count; i++)
 	{
-		ft_free(_ptrs[i]);
+		free(_ptrs[i]);
 	}
-	ft_free(_ptrs);
-	ft_free(sizes);
+	free(_ptrs);
+	free(sizes);
 }
 
 int main()
 {
 	srand((unsigned int)time(NULL));
 
-	test_classic();
-	// test_perf();
+	// test_classic();
+	test_perf();
 
 	return 0;
 }
