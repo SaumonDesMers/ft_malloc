@@ -164,32 +164,11 @@ void show_alloc_mem()
 }
 
 
-void show_alloc_mem_stat()
+void print_used_unused_internal(
+	size_t used, size_t used_percentage,
+	size_t unused, size_t unused_percentage,
+	size_t internal, size_t internal_percentage)
 {
-	write(1, "Allocated memory statistics:\n", 30);
-	const size_t total = g_ft_malloc.tiny_allocated + g_ft_malloc.small_allocated + g_ft_malloc.large_allocated;
-	if (total == 0)
-	{
-		write(1, "No memory allocated.\n", 21);
-		return;
-	}
-
-	const size_t tiny_internal = g_ft_malloc.tiny_zone_count * MEM_USED_BY_ZONE_HEADERS(TINY_BLOCK_SIZE);
-	const size_t small_internal = g_ft_malloc.small_zone_count * MEM_USED_BY_ZONE_HEADERS(SMALL_BLOCK_SIZE);
-	const size_t large_internal = g_ft_malloc.large_block_count * ALIGNED_HEADER_SIZE;
-	const size_t internal = tiny_internal + small_internal + large_internal;
-	const size_t internal_percentage = (internal * 100) / total + 1;
-
-	const size_t used = g_ft_malloc.tiny_allocated_used + g_ft_malloc.small_allocated_used + g_ft_malloc.large_allocated_used;
-	const size_t used_percentage = (used * 100) / total + 1;
-
-	const size_t unused = total - used - internal;
-	const size_t unused_percentage = (unused * 100) / total + 1;
-
-	write(1, "Total: ", 7);
-	put_nb(total / 1024);
-	write(1, " Kb\n", 4);
-
 	write(1, " - used:     ", 13);
 	put_nb(used / 1024);
 	write(1, " Kb (", 5);
@@ -207,20 +186,106 @@ void show_alloc_mem_stat()
 	write(1, " Kb (", 5);
 	put_nb(internal_percentage);
 	write(1, "%)\n\n", 4);
+}
 
-	write(1, "Tiny:  ", 7);
+void show_alloc_mem_stat()
+{
+	write(1, "Allocated memory statistics:\n", 30);
+
+	const size_t tiny_total = g_ft_malloc.tiny_allocated;
+	const size_t small_total = g_ft_malloc.small_allocated;
+	const size_t large_total = g_ft_malloc.large_allocated;
+	const size_t total = tiny_total + small_total + large_total;
+	const size_t tiny_total_percentage = (tiny_total * 100) / total;
+	const size_t small_total_percentage = (small_total * 100) / total;
+	const size_t large_total_percentage = (large_total * 100) / total;
+
+	if (total == 0)
+	{
+		write(1, "No memory allocated.\n", 21);
+		return;
+	}
+
+	const size_t tiny_internal = g_ft_malloc.tiny_zone_count * MEM_USED_BY_ZONE_HEADERS(TINY_BLOCK_SIZE);
+	const size_t tiny_internal_percentage = (tiny_internal * 100) / total;
+	const size_t small_internal = g_ft_malloc.small_zone_count * MEM_USED_BY_ZONE_HEADERS(SMALL_BLOCK_SIZE);
+	const size_t small_internal_percentage = (small_internal * 100) / total;
+	const size_t large_internal = g_ft_malloc.large_block_count * ALIGNED_HEADER_SIZE;
+	const size_t large_internal_percentage = (large_internal * 100) / total;
+	const size_t internal = tiny_internal + small_internal + large_internal;
+	const size_t internal_percentage = (internal * 100) / total;
+
+	const size_t tiny_used = g_ft_malloc.tiny_allocated_used;
+	const size_t tiny_used_percentage = (tiny_used * 100) / total;
+	const size_t small_used = g_ft_malloc.small_allocated_used;
+	const size_t small_used_percentage = (small_used * 100) / total;
+	const size_t large_used = g_ft_malloc.large_allocated_used;
+	const size_t large_used_percentage = (large_used * 100) / total;
+	const size_t used = g_ft_malloc.tiny_allocated_used + g_ft_malloc.small_allocated_used + g_ft_malloc.large_allocated_used;
+	const size_t used_percentage = (used * 100) / total;
+
+	const size_t tiny_unused = g_ft_malloc.tiny_allocated - g_ft_malloc.tiny_allocated_used - tiny_internal;
+	const size_t tiny_unused_percentage = (tiny_unused * 100) / total;
+	const size_t small_unused = g_ft_malloc.small_allocated - g_ft_malloc.small_allocated_used - small_internal;
+	const size_t small_unused_percentage = (small_unused * 100) / total;
+	const size_t large_unused = g_ft_malloc.large_allocated - g_ft_malloc.large_allocated_used - large_internal;
+	const size_t large_unused_percentage = (large_unused * 100) / total;
+	const size_t unused = total - used - internal;
+	const size_t unused_percentage = (unused * 100) / total;
+
+	write(1, "Total: ", 7);
+	put_nb(total / 1024);
+	write(1, " Kb\n", 4);
+
+	print_used_unused_internal(
+		used, used_percentage,
+		unused, unused_percentage,
+		internal, internal_percentage
+	);
+
+	write(1, "Tiny: ", 7);
+	put_nb(tiny_total / 1024);
+	write(1, " Kb (", 5);
+	put_nb(tiny_total_percentage);
+	write(1, "%) - ", 6);
 	put_nb(g_ft_malloc.tiny_block_count);
 	write(1, " blocks in ", 11);
 	put_nb(g_ft_malloc.tiny_zone_count);
 	write(1, " zones\n", 7);
 
+	print_used_unused_internal(
+		tiny_used, tiny_used_percentage,
+		tiny_unused, tiny_unused_percentage,
+		tiny_internal, tiny_internal_percentage
+	);
+
 	write(1, "Small: ", 7);
+	put_nb(small_total / 1024);
+	write(1, " Kb (", 5);
+	put_nb(small_total_percentage);
+	write(1, "%) - ", 6);
 	put_nb(g_ft_malloc.small_block_count);
 	write(1, " blocks in ", 11);
 	put_nb(g_ft_malloc.small_zone_count);
 	write(1, " zones\n", 7);
 
+	print_used_unused_internal(
+		small_used, small_used_percentage,
+		small_unused, small_unused_percentage,
+		small_internal, small_internal_percentage
+	);
+
 	write(1, "Large: ", 7);
+	put_nb(large_total / 1024);
+	write(1, " Kb (", 5);
+	put_nb(large_total_percentage);
+	write(1, "%) - ", 6);
 	put_nb(g_ft_malloc.large_block_count);
 	write(1, " blocks\n", 8);
+
+	print_used_unused_internal(
+		large_used, large_used_percentage,
+		large_unused, large_unused_percentage,
+		large_internal, large_internal_percentage
+	);
 }
