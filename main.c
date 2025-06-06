@@ -4,7 +4,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define TEST_COUNT 100000
+#define TEST_COUNT 10000
 
 void unit_test_perf(
 	void * (*malloc_func)(size_t size),
@@ -39,7 +39,7 @@ void test_perf()
 	size_t * sizes = malloc(TEST_COUNT * sizeof(size_t));
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
-		sizes[i] = (rand() % 1000) + 4000;
+		sizes[i] = (rand() % 10000) + 1;
 	}
 
 	double start_time = (clock() / (double)CLOCKS_PER_SEC);
@@ -120,7 +120,6 @@ int main()
 
 	test_classic();
 	// test_perf();
-
 
 	return 0;
 }

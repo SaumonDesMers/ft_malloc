@@ -1,5 +1,49 @@
 #include "malloc.h"
 
+size_t ft_strlen(const char * str)
+{
+	size_t len = 0;
+	while (str[len] != '\0')
+	{
+		len++;
+	}
+	return len;
+}
+
+void put_char(char c)
+{
+	write(1, &c, 1);
+}
+
+void put_nb(size_t nb)
+{
+	if (nb >= 10)
+	{
+		put_nb(nb / 10);
+	}
+	put_char((nb % 10) + '0');
+}
+
+size_t put_hex(size_t nb)
+{
+	size_t count = 0;
+	if (nb >= 16)
+	{
+		count += put_hex(nb / 16);
+	}
+	char c = (nb % 16);
+	if (c < 10)
+	{
+		put_char(c + '0');
+	}
+	else
+	{
+		put_char(c - 10 + 'A');
+	}
+	return count + 1;
+}
+
+
 static void sort(void ** ptr_vector, size_t count)
 {
 	if (ptr_vector == NULL || count < 2)
@@ -47,10 +91,14 @@ static void print_block_linked_list(AllocBlockHeader * head)
 	for (size_t i = 0; i < used_block_count; i++)
 	{
 		current = ptr_vector[i];
-		printf("0x%lX - 0x%lX : %zu bytes\n",
-			(__uint64_t)FROM_HEADER_TO_BUFFER_ADDR(current),
-			(__uint64_t)FROM_HEADER_TO_BUFFER_ADDR(current) + current->size,
-			current->size);
+		
+		write(1, "0x", 2);
+		put_hex((__uint64_t)FROM_HEADER_TO_BUFFER_ADDR(current));
+		write(1, " - 0x", 5);
+		put_hex((__uint64_t)FROM_HEADER_TO_BUFFER_ADDR(current) + current->size);
+		write(1, " : ", 3);
+		put_nb(current->size);
+		write(1, " bytes\n", 7);
 	}
 }
 
@@ -82,7 +130,12 @@ static void print_zone_linked_list(AllocZoneHeader * head, char * name)
 	for (size_t i = 0; i < used_block_count; i++)
 	{
 		current = ptr_vector[i];
-		printf("%s : 0x%lX\n", name, (__uint64_t)current);
+		
+		write(1, name, ft_strlen(name));
+		write(1, " : 0x", 5);
+		put_hex((__uint64_t)current);
+		write(1, "\n", 1);
+
 		print_block_linked_list(current->used_blocks);
 	}
 }
@@ -101,42 +154,72 @@ void show_alloc_mem()
 
 	if (g_ft_malloc.large_blocks)
 	{
-		printf("LARGE :\n");
+		write(1, "LARGE :\n", 8);
 		print_block_linked_list(g_ft_malloc.large_blocks);
 	}
 
-	printf("Total allocated: %zu bytes\n", g_ft_malloc.total_allocated_used);
+	write(1, "Total allocated: ", 17);
+	put_nb(g_ft_malloc.total_allocated_used);
+	write(1, " bytes\n", 7);
 }
 
 
 void show_alloc_mem_stat()
 {
-	printf("Allocated memory statistics:\n");
+	write(1, "Allocated memory statistics:\n", 30);
 	const size_t total = g_ft_malloc.total_allocated;
 	if (total == 0)
 	{
-		printf("No memory allocated.\n");
+		write(1, "No memory allocated.\n", 21);
 		return;
 	}
 
 	const size_t internal = g_ft_malloc.tiny_zone_count * MEM_USED_BY_ZONE_HEADERS(TINY_BLOCK_SIZE)
 		+ g_ft_malloc.small_zone_count * MEM_USED_BY_ZONE_HEADERS(SMALL_BLOCK_SIZE)
 		+ g_ft_malloc.large_block_count * ALIGNED_HEADER_SIZE;
-	const float internal_percentage = (float)internal * 100.0 / (float)total;
+	const size_t internal_percentage = (internal * 100) / total + 1;
 
 	const size_t used = g_ft_malloc.total_allocated_used;
-	const float used_percentage = (float)used * 100.0 / (float)total;
+	const size_t used_percentage = (used * 100) / total + 1;
 
 	const size_t unused = total - used - internal;
-	const float unused_percentage = (float)unused * 100.0 / (float)total;
+	const size_t unused_percentage = (unused * 100) / total + 1;
 
+	write(1, "Total: ", 7);
+	put_nb(total / 1024);
+	write(1, " Kb\n", 4);
 
-	printf("Total: %zu Kb\n", total / 1024);
-	printf(" - used:     %zu Kb (%.2f%%)\n", used / 1024, used_percentage);
-	printf(" - unused:   %zu Kb (%.2f%%)\n", unused / 1024, unused_percentage);
-	printf(" - internal: %zu Kb (%.2f%%)\n\n", internal / 1024, internal_percentage);
-	printf("Tiny:  %zu blocks in %zu zones\n", g_ft_malloc.tiny_block_count, g_ft_malloc.tiny_zone_count);
-	printf("Small: %zu blocks in %zu zones\n", g_ft_malloc.small_block_count, g_ft_malloc.small_zone_count);
-	printf("Large: %zu blocks\n", g_ft_malloc.large_block_count);
-	
+	write(1, " - used:     ", 13);
+	put_nb(used / 1024);
+	write(1, " Kb (", 5);
+	put_nb(used_percentage);
+	write(1, "%)\n", 3);
+
+	write(1, " - unused:   ", 13);
+	put_nb(unused / 1024);
+	write(1, " Kb (", 5);
+	put_nb(unused_percentage);
+	write(1, "%)\n", 3);
+
+	write(1, " - internal: ", 13);
+	put_nb(internal / 1024);
+	write(1, " Kb (", 5);
+	put_nb(internal_percentage);
+	write(1, "%)\n\n", 4);
+
+	write(1, "Tiny:  ", 7);
+	put_nb(g_ft_malloc.tiny_block_count);
+	write(1, " blocks in ", 11);
+	put_nb(g_ft_malloc.tiny_zone_count);
+	write(1, " zones\n", 7);
+
+	write(1, "Small: ", 7);
+	put_nb(g_ft_malloc.small_block_count);
+	write(1, " blocks in ", 11);
+	put_nb(g_ft_malloc.small_zone_count);
+	write(1, " zones\n", 7);
+
+	write(1, "Large: ", 7);
+	put_nb(g_ft_malloc.large_block_count);
+	write(1, " blocks\n", 8);
 }

@@ -22,11 +22,6 @@ void * allocate_memory(void * address, size_t size)
 
 AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_size)
 {
-	if (first_zone == NULL)
-	{
-		return NULL;
-	}
-
 	// Ensure that the block size is large enough to hold the AllocZoneHeader header.
 	assert(sizeof(AllocZoneHeader) < block_size && 
 		"AllocZoneHeader size must be less than the block size");
@@ -73,11 +68,6 @@ AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_siz
 
 void remove_alloc_zone(AllocZoneHeader ** first_zone, AllocZoneHeader * zone)
 {
-	if (first_zone == NULL || zone == NULL)
-	{
-		return;
-	}
-
 	if (*first_zone == zone)
 	{
 		*first_zone = zone->next;
@@ -130,12 +120,6 @@ void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 
 void free_block(AllocBlockHeader * block)
 {
-	if (block == NULL || block->zone == NULL)
-	{
-		printf("Error: Attempt to free a block with no zone.\n");
-		printf("block size: %zu, zone address: %p\n", block->size, block->zone);
-		return;
-	}
 	// Remove the block from the used blocks list.
 	if (block == block->zone->used_blocks)
 	{
