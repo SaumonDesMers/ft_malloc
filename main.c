@@ -4,7 +4,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define TEST_COUNT 30000
+#define TEST_COUNT 100000
 
 void unit_test_perf(
 	void * (*malloc_func)(size_t size),
@@ -39,7 +39,7 @@ void test_perf()
 	size_t * sizes = malloc(TEST_COUNT * sizeof(size_t));
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
-		sizes[i] = (rand() % 10000) + 1;
+		sizes[i] = (rand() % 1000) + 4000;
 	}
 
 	double start_time = (clock() / (double)CLOCKS_PER_SEC);
@@ -81,7 +81,7 @@ void test_classic()
 	void * ptrs[20];
 	for (int i = 0; i < 20; i++)
 	{
-		ptrs[i] = ft_malloc(rand() % 3000 + 1);
+		ptrs[i] = ft_malloc(rand() % 7000 + 1);
 	}
 	printf("\n");
 	show_alloc_mem();
@@ -92,11 +92,11 @@ void test_classic()
 
 	//#########################################################
 
-	size_t size_count = 100000;
-	size_t * sizes = malloc(size_count * sizeof(size_t));
+	size_t size_count = 10000;
+	size_t * sizes = ft_malloc(size_count * sizeof(size_t));
 	for (int i = 0; i < size_count; i++)
 	{
-		sizes[i] = (rand() % 10000) + 1;
+		sizes[i] = (rand() % 100000) + 1;
 	}
 
 	void ** _ptrs = ft_malloc(size_count * sizeof(void *));
@@ -111,6 +111,7 @@ void test_classic()
 		ft_free(_ptrs[i]);
 	}
 	ft_free(_ptrs);
+	ft_free(sizes);
 }
 
 int main()

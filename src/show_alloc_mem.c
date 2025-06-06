@@ -1,26 +1,89 @@
 #include "malloc.h"
 
+static void sort(void ** ptr_vector, size_t count)
+{
+	if (ptr_vector == NULL || count < 2)
+		return;
+	
+	for (size_t i = 0; i < count - 1; i++)
+	{
+		for (size_t j = i + 1; j < count; j++)
+		{
+			if (ptr_vector[i] > ptr_vector[j])
+			{
+				void * temp = ptr_vector[i];
+				ptr_vector[i] = ptr_vector[j];
+				ptr_vector[j] = temp;
+			}
+		}
+	}
+}
+
 static void print_block_linked_list(AllocBlockHeader * head)
 {
 	AllocBlockHeader * current = head;
+
+	size_t used_block_count = 0;
 	while (current != NULL)
 	{
+		used_block_count++;
+		current = current->next;
+	}
+
+	AllocBlockHeader ** ptr_vector = allocate_memory(NULL, used_block_count * sizeof(AllocBlockHeader *));
+	if (ptr_vector == NULL)
+		return;
+
+	current = head;
+	size_t index = 0;
+	while (current != NULL)
+	{
+		ptr_vector[index++] = current;
+		current = current->next;
+	}
+
+	sort((void **)ptr_vector, used_block_count);
+
+	for (size_t i = 0; i < used_block_count; i++)
+	{
+		current = ptr_vector[i];
 		printf("0x%lX - 0x%lX : %zu bytes\n",
 			(__uint64_t)FROM_HEADER_TO_BUFFER_ADDR(current),
 			(__uint64_t)FROM_HEADER_TO_BUFFER_ADDR(current) + current->size,
 			current->size);
-		current = current->next;
 	}
 }
 
 static void print_zone_linked_list(AllocZoneHeader * head, char * name)
 {
 	AllocZoneHeader * current = head;
+
+	size_t used_block_count = 0;
 	while (current != NULL)
 	{
+		used_block_count++;
+		current = current->next;
+	}
+
+	AllocZoneHeader ** ptr_vector = allocate_memory(NULL, used_block_count * sizeof(AllocZoneHeader *));
+	if (ptr_vector == NULL)
+		return;
+
+	current = head;
+	size_t index = 0;
+	while (current != NULL)
+	{
+		ptr_vector[index++] = current;
+		current = current->next;
+	}
+
+	sort((void **)ptr_vector, used_block_count);
+
+	for (size_t i = 0; i < used_block_count; i++)
+	{
+		current = ptr_vector[i];
 		printf("%s : 0x%lX\n", name, (__uint64_t)current);
 		print_block_linked_list(current->used_blocks);
-		current = current->next;
 	}
 }
 
@@ -44,8 +107,6 @@ void show_alloc_mem()
 
 	printf("Total allocated: %zu bytes\n", g_ft_malloc.total_allocated_used);
 }
-
-
 
 
 void show_alloc_mem_stat()
