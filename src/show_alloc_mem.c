@@ -1,6 +1,6 @@
 #include "malloc.h"
 
-size_t ft_strlen(const char * str)
+static size_t ft_strlen(const char * str)
 {
 	size_t len = 0;
 	while (str[len] != '\0')
@@ -10,12 +10,12 @@ size_t ft_strlen(const char * str)
 	return len;
 }
 
-void put_char(char c)
+static void put_char(char c)
 {
 	write(1, &c, 1);
 }
 
-void put_nb(size_t nb)
+static void put_nb(size_t nb)
 {
 	if (nb >= 10)
 	{
@@ -24,7 +24,7 @@ void put_nb(size_t nb)
 	put_char((nb % 10) + '0');
 }
 
-size_t put_hex(size_t nb)
+static size_t put_hex(size_t nb)
 {
 	size_t count = 0;
 	if (nb >= 16)
@@ -159,7 +159,7 @@ void show_alloc_mem()
 	}
 
 	write(1, "Total allocated: ", 17);
-	put_nb(g_ft_malloc.total_allocated_used);
+	put_nb(g_ft_malloc.tiny_allocated + g_ft_malloc.small_allocated + g_ft_malloc.large_allocated);
 	write(1, " bytes\n", 7);
 }
 
@@ -167,19 +167,20 @@ void show_alloc_mem()
 void show_alloc_mem_stat()
 {
 	write(1, "Allocated memory statistics:\n", 30);
-	const size_t total = g_ft_malloc.total_allocated;
+	const size_t total = g_ft_malloc.tiny_allocated + g_ft_malloc.small_allocated + g_ft_malloc.large_allocated;
 	if (total == 0)
 	{
 		write(1, "No memory allocated.\n", 21);
 		return;
 	}
 
-	const size_t internal = g_ft_malloc.tiny_zone_count * MEM_USED_BY_ZONE_HEADERS(TINY_BLOCK_SIZE)
-		+ g_ft_malloc.small_zone_count * MEM_USED_BY_ZONE_HEADERS(SMALL_BLOCK_SIZE)
-		+ g_ft_malloc.large_block_count * ALIGNED_HEADER_SIZE;
+	const size_t tiny_internal = g_ft_malloc.tiny_zone_count * MEM_USED_BY_ZONE_HEADERS(TINY_BLOCK_SIZE);
+	const size_t small_internal = g_ft_malloc.small_zone_count * MEM_USED_BY_ZONE_HEADERS(SMALL_BLOCK_SIZE);
+	const size_t large_internal = g_ft_malloc.large_block_count * ALIGNED_HEADER_SIZE;
+	const size_t internal = tiny_internal + small_internal + large_internal;
 	const size_t internal_percentage = (internal * 100) / total + 1;
 
-	const size_t used = g_ft_malloc.total_allocated_used;
+	const size_t used = g_ft_malloc.tiny_allocated_used + g_ft_malloc.small_allocated_used + g_ft_malloc.large_allocated_used;
 	const size_t used_percentage = (used * 100) / total + 1;
 
 	const size_t unused = total - used - internal;

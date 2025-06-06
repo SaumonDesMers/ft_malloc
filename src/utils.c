@@ -5,13 +5,19 @@ FtMallocGlobal g_ft_malloc = {
 	.small_zones = NULL,
 	.large_blocks = NULL,
 
-	.total_allocated = 0,
-	.total_allocated_used = 0,
 	.tiny_zone_count = 0,
 	.tiny_block_count = 0,
+	.tiny_allocated = 0,
+	.tiny_allocated_used = 0,
+
 	.small_zone_count = 0,
 	.small_block_count = 0,
-	.large_block_count = 0
+	.small_allocated = 0,
+	.small_allocated_used = 0,
+
+	.large_block_count = 0,
+	.large_allocated = 0,
+	.large_allocated_used = 0
 };
 
 void * allocate_memory(void * address, size_t size)
@@ -36,9 +42,6 @@ AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_siz
 	new_zone->block_size = block_size;
 	new_zone->block_count = zone_size / block_size;
 	new_zone->total_allocated = zone_size;
-	new_zone->total_allocated_used = 0;
-
-	g_ft_malloc.total_allocated += zone_size;
 
 	// Insert the new zone at the beginning of the linked list.
 	new_zone->prev = NULL;
@@ -69,19 +72,11 @@ AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_siz
 void remove_alloc_zone(AllocZoneHeader ** first_zone, AllocZoneHeader * zone)
 {
 	if (*first_zone == zone)
-	{
 		*first_zone = zone->next;
-	}
 	if (zone->prev)
-	{
 		zone->prev->next = zone->next;
-	}
 	if (zone->next)
-	{
 		zone->next->prev = zone->prev;
-	}
-
-	g_ft_malloc.total_allocated -= zone->total_allocated;
 
 	munmap(zone, zone->total_allocated);
 }
@@ -108,9 +103,6 @@ void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 
 			block->size = alloc_size;
 
-			zone->total_allocated_used += alloc_size;
-			g_ft_malloc.total_allocated_used += alloc_size;
-
 			return FROM_HEADER_TO_BUFFER_ADDR(block);
 		}
 		zone = zone->next;
@@ -122,24 +114,14 @@ void free_block(AllocBlockHeader * block)
 {
 	// Remove the block from the used blocks list.
 	if (block == block->zone->used_blocks)
-	{
 		block->zone->used_blocks = block->next;
-	}
 	if (block->prev)
-	{
 		block->prev->next = block->next;
-	}
 	if (block->next)
-	{
 		block->next->prev = block->prev;
-	}
 
 	// Add the block to the free blocks list.
 	block->next = block->zone->free_blocks;
 	block->prev = NULL;
 	block->zone->free_blocks = block;
-
-	// Update statistics.
-	block->zone->total_allocated_used -= block->size;
-	g_ft_malloc.total_allocated_used -= block->size;
 }

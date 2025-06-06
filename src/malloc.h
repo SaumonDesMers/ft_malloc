@@ -3,7 +3,6 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/mman.h>
@@ -55,7 +54,6 @@ typedef struct s_AllocZoneHeader
 	size_t block_size;
 	size_t block_count;
 	size_t total_allocated;
-	size_t total_allocated_used;
 
 } AllocZoneHeader;
 
@@ -65,13 +63,19 @@ typedef struct s_FtMallocGlobal
 	AllocZoneHeader * small_zones;
 	AllocBlockHeader * large_blocks;
 
-	size_t total_allocated;
-	size_t total_allocated_used;
 	size_t tiny_zone_count;
 	size_t tiny_block_count;
+	size_t tiny_allocated;
+	size_t tiny_allocated_used;
+
 	size_t small_zone_count;
 	size_t small_block_count;
+	size_t small_allocated;
+	size_t small_allocated_used;
+
 	size_t large_block_count;
+	size_t large_allocated;
+	size_t large_allocated_used;
 
 } FtMallocGlobal;
 

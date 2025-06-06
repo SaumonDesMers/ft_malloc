@@ -13,9 +13,11 @@ void * ft_malloc(size_t size)
 				return NULL;
 			}
 			g_ft_malloc.tiny_zone_count++;
+			g_ft_malloc.tiny_allocated += new_zone->total_allocated;
 			address = alloc_block(new_zone, size);
 		}
 		g_ft_malloc.tiny_block_count++;
+		g_ft_malloc.tiny_allocated_used += size;
 		return address;
 	}
 	else if (size <= SMALL_ALLOC_SIZE)
@@ -29,9 +31,11 @@ void * ft_malloc(size_t size)
 				return NULL;
 			}
 			g_ft_malloc.small_zone_count++;
+			g_ft_malloc.small_allocated += new_zone->total_allocated;
 			address = alloc_block(new_zone, size);
 		}
 		g_ft_malloc.small_block_count++;
+		g_ft_malloc.small_allocated_used += size;
 		return address;
 	}
 	
@@ -41,9 +45,9 @@ void * ft_malloc(size_t size)
 	{
 		return NULL;
 	}
-	g_ft_malloc.total_allocated_used += size;
-	g_ft_malloc.total_allocated += ALIGN(size + ALIGNED_HEADER_SIZE, sysconf(_SC_PAGESIZE));
 	g_ft_malloc.large_block_count++;
+	g_ft_malloc.large_allocated_used += size;
+	g_ft_malloc.large_allocated += ALIGN(size + ALIGNED_HEADER_SIZE, sysconf(_SC_PAGESIZE));
 
 	AllocBlockHeader * header = (AllocBlockHeader *)address;
 	header->size = size;

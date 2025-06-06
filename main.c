@@ -73,6 +73,15 @@ void test_classic()
 	strcat(ptr, " Welcome to ft_malloc!");
 	printf("Reallocated memory at %p with content: %s\n", ptr, (char *)ptr);
 
+	ptr = ft_realloc(ptr, 10000);
+	if (ptr == NULL)
+	{
+		printf("Memory reallocation failed\n");
+		return;
+	}
+	strcat(ptr, " This is a large allocation test.");
+	printf("Reallocated memory at %p with content: %s\n", ptr, (char *)ptr);
+
 	ft_free(ptr);
 	printf("Freed memory at %p\n", ptr);
 
