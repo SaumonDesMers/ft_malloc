@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define TEST_COUNT 10000
 
@@ -56,6 +57,8 @@ void test_perf()
 	unit_test_perf(__libc_malloc, __libc_free, __libc_realloc, sizes);
 	end_time = (clock() / (double)CLOCKS_PER_SEC);
 	printf("malloc free: %.2f seconds\n", end_time - start_time);
+
+	free(sizes);
 }
 
 void test_classic()
@@ -133,7 +136,7 @@ int main()
 	srand((unsigned int)time(NULL));
 
 	// test_classic();
-	test_perf();
+	// test_perf();
 
 	return 0;
 }

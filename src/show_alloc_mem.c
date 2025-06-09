@@ -142,6 +142,8 @@ static void print_zone_linked_list(AllocZoneHeader * head, char * name)
 
 void show_alloc_mem()
 {
+	pthread_mutex_lock(&g_ft_malloc.mutex);
+
 	if (g_ft_malloc.tiny_zones)
 	{
 		print_zone_linked_list(g_ft_malloc.tiny_zones, "TINY");
@@ -161,6 +163,8 @@ void show_alloc_mem()
 	write(1, "Total allocated: ", 17);
 	put_nb(g_ft_malloc.tiny_allocated + g_ft_malloc.small_allocated + g_ft_malloc.large_allocated);
 	write(1, " bytes\n", 7);
+	
+	pthread_mutex_unlock(&g_ft_malloc.mutex);
 }
 
 
@@ -196,15 +200,16 @@ void show_alloc_mem_stat()
 	const size_t small_total = g_ft_malloc.small_allocated;
 	const size_t large_total = g_ft_malloc.large_allocated;
 	const size_t total = tiny_total + small_total + large_total;
-	const size_t tiny_total_percentage = (tiny_total * 100) / total;
-	const size_t small_total_percentage = (small_total * 100) / total;
-	const size_t large_total_percentage = (large_total * 100) / total;
-
+	
 	if (total == 0)
 	{
 		write(1, "No memory allocated.\n", 21);
 		return;
 	}
+	
+	const size_t tiny_total_percentage = (tiny_total * 100) / total;
+	const size_t small_total_percentage = (small_total * 100) / total;
+	const size_t large_total_percentage = (large_total * 100) / total;
 
 	const size_t tiny_internal = g_ft_malloc.tiny_zone_count * MEM_USED_BY_ZONE_HEADERS(TINY_BLOCK_SIZE);
 	const size_t tiny_internal_percentage = (tiny_internal * 100) / total;

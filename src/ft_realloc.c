@@ -32,21 +32,31 @@ void * intern_realloc(void * ptr, size_t size)
 	}
 
 	AllocBlockHeader * header = FROM_BUFFER_TO_HEADER_ADDR(ptr);
+	// Check if old size is greater than new size
 	if (header->size >= size)
 	{
 		return ptr;
 	}
-
+	// Check if new size and old size are both in the tiny allocation range
 	if (header->size <= TINY_ALLOC_SIZE && size <= TINY_ALLOC_SIZE)
 	{
 		header->size = size;
 		g_ft_malloc.tiny_allocated_used -= (header->size - size);
 		return ptr;
 	}
+	// Check if new size and old size are both in the small allocation range
 	if (header->size <= SMALL_ALLOC_SIZE && header->size > TINY_ALLOC_SIZE && size <= SMALL_ALLOC_SIZE)
 	{
 		header->size = size;
 		g_ft_malloc.small_allocated_used -= (header->size - size);
+		return ptr;
+	}
+	// Check if the old size is large and the new size is also large, but fits within the same page
+	if (header->size > SMALL_ALLOC_SIZE
+		&& size <= ALIGN(header->size + ALIGNED_HEADER_SIZE, sysconf(_SC_PAGESIZE)) - ALIGNED_HEADER_SIZE)
+	{
+		header->size = size;
+		g_ft_malloc.large_allocated_used -= (header->size - size);
 		return ptr;
 	}
 

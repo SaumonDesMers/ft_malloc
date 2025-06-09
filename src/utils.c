@@ -22,6 +22,7 @@ FtMallocGlobal g_ft_malloc = {
 	.large_allocated_used = 0
 };
 
+
 void * allocate_memory(void * address, size_t size)
 {
 	return mmap(address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);

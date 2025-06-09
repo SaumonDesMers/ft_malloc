@@ -9,6 +9,8 @@
 #include <assert.h>
 #include <pthread.h>
 
+#include <stdio.h>
+
 #define MIN_ALIGNMENT 16
 
 #define ALIGN(value, align) \
@@ -16,9 +18,9 @@
 
 #define ALIGNED_HEADER_SIZE 32
 
-#define TINY_BLOCK_SIZE 512
+#define TINY_BLOCK_SIZE 256
 #define TINY_ALLOC_SIZE (TINY_BLOCK_SIZE - ALIGNED_HEADER_SIZE)
-#define SMALL_BLOCK_SIZE 4096
+#define SMALL_BLOCK_SIZE 1056
 #define SMALL_ALLOC_SIZE (SMALL_BLOCK_SIZE - ALIGNED_HEADER_SIZE)
 #define MIN_BLOCK_COUNT_IN_ZONE 256
 

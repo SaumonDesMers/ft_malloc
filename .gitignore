@@ -5,3 +5,5 @@ libft_malloc*.so
 tester_ft_malloc
 
 .vscode
+
+test
