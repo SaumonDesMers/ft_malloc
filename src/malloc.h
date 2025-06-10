@@ -11,18 +11,36 @@
 
 #include <stdio.h>
 
+
+#define ADD_TO_LINKED_LIST(list, header) \
+	(header)->prev = NULL; \
+	(header)->next = (list); \
+	if ((list) != NULL) \
+		(list)->prev = (header); \
+	(list) = (header);
+
+#define REMOVE_FROM_LINKED_LIST(list, header) \
+	if ((list) == (header)) \
+		(list) = (header)->next; \
+	if ((header)->prev) \
+		(header)->prev->next = (header)->next; \
+	if ((header)->next) \
+		(header)->next->prev = (header)->prev;
+
+
 #define MIN_ALIGNMENT 16
+#define MIN_FRAGMENTATION_SIZE 64
 
 #define ALIGN(value, align) \
-	(((value) + (align - 1)) & ~(align - 1))
+	((__uint64_t)((value) + (align - 1)) & ~(align - 1))
 
-#define ALIGNED_HEADER_SIZE 32
+#define ALIGNED_HEADER_SIZE ALIGN(sizeof(AllocBlockHeader), MIN_ALIGNMENT)
 
 #define TINY_BLOCK_SIZE 256
 #define TINY_ALLOC_SIZE (TINY_BLOCK_SIZE - ALIGNED_HEADER_SIZE)
-#define SMALL_BLOCK_SIZE 1056
+#define SMALL_BLOCK_SIZE 2048
 #define SMALL_ALLOC_SIZE (SMALL_BLOCK_SIZE - ALIGNED_HEADER_SIZE)
-#define MIN_BLOCK_COUNT_IN_ZONE 256
+#define MIN_BLOCK_COUNT_IN_ZONE 128
 
 #define MEM_USED_BY_ZONE_HEADERS(block_size) \
 	((block_size) + ALIGNED_HEADER_SIZE * (MIN_BLOCK_COUNT_IN_ZONE - 1))
@@ -54,8 +72,6 @@ typedef struct s_AllocZoneHeader
 	AllocBlockHeader * free_blocks;
 	AllocBlockHeader * used_blocks;
 
-	size_t block_size;
-	size_t block_count;
 	size_t total_allocated;
 
 } AllocZoneHeader;
@@ -64,23 +80,10 @@ typedef struct s_FtMallocGlobal
 {
 	AllocZoneHeader * tiny_zones;
 	AllocZoneHeader * small_zones;
-	AllocBlockHeader * large_blocks;
+	AllocBlockHeader * used_large_blocks;
+	AllocBlockHeader * free_large_blocks;
 
 	pthread_mutex_t mutex;
-
-	size_t tiny_zone_count;
-	size_t tiny_block_count;
-	size_t tiny_allocated;
-	size_t tiny_allocated_used;
-
-	size_t small_zone_count;
-	size_t small_block_count;
-	size_t small_allocated;
-	size_t small_allocated_used;
-
-	size_t large_block_count;
-	size_t large_allocated;
-	size_t large_allocated_used;
 
 } FtMallocGlobal;
 
@@ -98,5 +101,10 @@ void free_block(AllocBlockHeader * block_address);
 void * intern_malloc(size_t size);
 void * intern_realloc(void * ptr, size_t size);
 void intern_free(void * ptr);
+
+
+int check_range_in_list(void * ptr, size_t size, AllocBlockHeader * header);
+int check_range_in_zone(void * ptr, size_t size, AllocZoneHeader * header);
+int check_range(void * ptr, size_t size);
 
 #endif // MALLOC_H

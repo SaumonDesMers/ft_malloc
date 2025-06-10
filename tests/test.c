@@ -12,7 +12,7 @@ int main(int ac)
 	{
 		if (ac > 1)
 		{
-			addr = (char*)malloc(1024);
+			addr = (char*)malloc(1024 * i);
 			if (addr == NULL)
 			{
 				write(1, "Failed to allocate memory\n", 26);

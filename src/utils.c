@@ -3,23 +3,10 @@
 FtMallocGlobal g_ft_malloc = {
 	.tiny_zones = NULL,
 	.small_zones = NULL,
-	.large_blocks = NULL,
+	.used_large_blocks = NULL,
+	.free_large_blocks = NULL,
 
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
-
-	.tiny_zone_count = 0,
-	.tiny_block_count = 0,
-	.tiny_allocated = 0,
-	.tiny_allocated_used = 0,
-
-	.small_zone_count = 0,
-	.small_block_count = 0,
-	.small_allocated = 0,
-	.small_allocated_used = 0,
-
-	.large_block_count = 0,
-	.large_allocated = 0,
-	.large_allocated_used = 0
 };
 
 
@@ -29,10 +16,26 @@ void * allocate_memory(void * address, size_t size)
 }
 
 
+int detect_linked_list_cycle(AllocBlockHeader * head)
+{
+	AllocBlockHeader * slow = head;
+	AllocBlockHeader * fast = head;
+
+	while (fast && fast->next)
+	{
+		slow = slow->next;
+		fast = fast->next->next;
+
+		if (slow == fast)
+			return 1;
+	}
+	return 0;
+}
+
 AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_size)
 {
 	// Ensure that the block size is large enough to hold the AllocZoneHeader header.
-	assert(sizeof(AllocZoneHeader) < block_size && 
+	assert(sizeof(AllocZoneHeader) < block_size &&
 		"AllocZoneHeader size must be less than the block size");
 
 	// Allocate a new zone of memory.
@@ -42,45 +45,24 @@ AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_siz
 	{
 		return NULL;
 	}
-	new_zone->block_size = block_size;
-	new_zone->block_count = zone_size / block_size;
 	new_zone->total_allocated = zone_size;
 
-	// Insert the new zone at the beginning of the linked list.
-	new_zone->prev = NULL;
-	new_zone->next = *first_zone;
-	*first_zone = new_zone;
-	if (new_zone->next != NULL)
-	{
-		new_zone->next->prev = new_zone;
-	}
+	ADD_TO_LINKED_LIST(*first_zone, new_zone);
 
 	// Initialize the blocks linked list.
 	new_zone->used_blocks = NULL;
-	new_zone->free_blocks = (AllocBlockHeader *)((char *)new_zone + block_size);
-	for (size_t i = 1; i < new_zone->block_count - 1; i++)
-	{
-		AllocBlockHeader * block = (AllocBlockHeader *)((char *)new_zone + i * block_size);
-		block->next = (AllocBlockHeader *)((char *)new_zone + (i + 1) * block_size);
-		block->zone = new_zone;
-	}
-	// Special case for the last block.
-	AllocBlockHeader * last_block = (AllocBlockHeader *)((char *)new_zone + (new_zone->block_count - 1) * block_size);
-	last_block->next = NULL;
-	last_block->zone = new_zone;
+	new_zone->free_blocks = (AllocBlockHeader *)ALIGN(new_zone + 1, 16);
+	new_zone->free_blocks->size = (char *)new_zone + zone_size - (char *)FROM_HEADER_TO_BUFFER_ADDR(new_zone->free_blocks);
+	new_zone->free_blocks->prev = NULL;
+	new_zone->free_blocks->next = NULL;
+	new_zone->free_blocks->zone = new_zone;
 
 	return new_zone;
 }
 
 void remove_alloc_zone(AllocZoneHeader ** first_zone, AllocZoneHeader * zone)
 {
-	if (*first_zone == zone)
-		*first_zone = zone->next;
-	if (zone->prev)
-		zone->prev->next = zone->next;
-	if (zone->next)
-		zone->next->prev = zone->prev;
-
+	REMOVE_FROM_LINKED_LIST(*first_zone, zone);
 	munmap(zone, zone->total_allocated);
 }
 
@@ -88,25 +70,41 @@ void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 {
 	while (zone)
 	{
-		// Check if there are any free blocks in the zone.
-		if (zone->free_blocks)
+		detect_linked_list_cycle(zone->free_blocks);
+		AllocBlockHeader * free_block = zone->free_blocks;
+		while (free_block)
 		{
-			// Allocate a block from the free blocks linked list.
-			AllocBlockHeader * block = zone->free_blocks;
-			zone->free_blocks = block->next;
-
-			// Add the block to the used blocks linked list.
-			block->next = zone->used_blocks;
-			block->prev = NULL;
-			zone->used_blocks = block;
-			if (zone->used_blocks->next)
+			if (free_block->size >= alloc_size)
 			{
-				zone->used_blocks->next->prev = zone->used_blocks;
+				AllocBlockHeader * alloc_block = free_block;
+				if (free_block->size > alloc_size + MIN_FRAGMENTATION_SIZE)
+				{
+					// Find new free block location
+					free_block = (AllocBlockHeader *)ALIGN((char *)free_block + ALIGNED_HEADER_SIZE + alloc_size, 16);
+					// Copy header from old block
+					*free_block = *alloc_block;
+					// Get the real allocation size caused by memory alignement
+					alloc_block->size = (char *)free_block - (char *)alloc_block - ALIGNED_HEADER_SIZE;
+					// Get the real remaining size
+					free_block->size = (char *)alloc_block + free_block->size - (char *)free_block;
+					
+					// Update previous node
+					if (free_block->prev)
+						free_block->prev->next = free_block;
+					else
+						zone->free_blocks = free_block;
+					// Update next node
+					if (free_block->next)
+						free_block->next->prev = free_block;
+				}
+				else
+				{
+					REMOVE_FROM_LINKED_LIST(zone->free_blocks, free_block);
+				}
+				ADD_TO_LINKED_LIST(zone->used_blocks, alloc_block);
+				return FROM_HEADER_TO_BUFFER_ADDR(alloc_block);
 			}
-
-			block->size = alloc_size;
-
-			return FROM_HEADER_TO_BUFFER_ADDR(block);
+			free_block = free_block->next;
 		}
 		zone = zone->next;
 	}
@@ -115,16 +113,63 @@ void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 
 void free_block(AllocBlockHeader * block)
 {
-	// Remove the block from the used blocks list.
-	if (block == block->zone->used_blocks)
-		block->zone->used_blocks = block->next;
-	if (block->prev)
-		block->prev->next = block->next;
-	if (block->next)
-		block->next->prev = block->prev;
+	REMOVE_FROM_LINKED_LIST(block->zone->used_blocks, block);
 
-	// Add the block to the free blocks list.
-	block->next = block->zone->free_blocks;
-	block->prev = NULL;
-	block->zone->free_blocks = block;
+	AllocBlockHeader * free_block = block->zone->free_blocks;
+	if (free_block == NULL)
+	{
+		block->prev = NULL;
+		block->next = NULL;
+		block->zone->free_blocks = block;
+	}
+	else if (free_block > block)
+	{
+		AllocBlockHeader * next = free_block;
+		
+		// Check if next block is adjacent for defragmentation
+		if (next && (char *)block + ALIGNED_HEADER_SIZE + block->size == (char *)next)
+		{
+			block->size += ALIGNED_HEADER_SIZE + next->size;
+			next = next->next;
+		}
+
+		block->prev = NULL;
+		block->zone->free_blocks = block;
+
+		block->next = next;
+		if (block->next)
+			block->next->prev = block;
+	}
+	else
+	{
+		while (free_block->next && free_block->next < block)
+			free_block = free_block->next;
+
+		AllocBlockHeader * prev = free_block;
+		AllocBlockHeader * next = free_block->next;
+		
+		// Check if prev block is adjacent for defragmentation
+		if (prev && (char *)prev + ALIGNED_HEADER_SIZE + prev->size == (char *)block)
+		{
+			prev->size += ALIGNED_HEADER_SIZE + block->size;
+			// Make the freed block point to the previous one
+			block = prev;
+			prev = prev->prev;
+		}
+
+		// Check if next block is adjacent for defragmentation
+		if (next && (char *)block + ALIGNED_HEADER_SIZE + block->size == (char *)next)
+		{
+			block->size += ALIGNED_HEADER_SIZE + next->size;
+			next = next->next;
+		}
+
+		block->prev = prev;
+		if (block->prev)
+			block->prev->next = block;
+
+		block->next = next;
+		if (block->next)
+			block->next->prev = block;
+	}
 }

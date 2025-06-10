@@ -1,5 +1,6 @@
 #include "malloc.h"
 
+
 void * malloc(size_t size)
 {
 	pthread_mutex_lock(&g_ft_malloc.mutex);
@@ -20,12 +21,8 @@ void * intern_malloc(size_t size)
 			{
 				return NULL;
 			}
-			g_ft_malloc.tiny_zone_count++;
-			g_ft_malloc.tiny_allocated += new_zone->total_allocated;
 			address = alloc_block(new_zone, size);
 		}
-		g_ft_malloc.tiny_block_count++;
-		g_ft_malloc.tiny_allocated_used += size;
 		return address;
 	}
 	else if (size <= SMALL_ALLOC_SIZE)
@@ -38,33 +35,33 @@ void * intern_malloc(size_t size)
 			{
 				return NULL;
 			}
-			g_ft_malloc.small_zone_count++;
-			g_ft_malloc.small_allocated += new_zone->total_allocated;
 			address = alloc_block(new_zone, size);
 		}
-		g_ft_malloc.small_block_count++;
-		g_ft_malloc.small_allocated_used += size;
 		return address;
 	}
+
+	AllocBlockHeader * free_large_block = g_ft_malloc.free_large_blocks;
+
+	while (free_large_block && free_large_block->size < size)
+		free_large_block = free_large_block->next;
 	
-	// For large allocations, we allocate a new memory block directly.
-	void * address = allocate_memory(NULL, size + ALIGNED_HEADER_SIZE);
+	if (free_large_block)
+	{
+		REMOVE_FROM_LINKED_LIST(g_ft_malloc.free_large_blocks, free_large_block);
+		ADD_TO_LINKED_LIST(g_ft_malloc.used_large_blocks, free_large_block);
+		return FROM_HEADER_TO_BUFFER_ADDR(free_large_block);
+	}
+	
+	size_t aligned_size = ALIGN(size + ALIGNED_HEADER_SIZE, sysconf(_SC_PAGESIZE));
+	void * address = allocate_memory(NULL, aligned_size);
 	if (address == MAP_FAILED)
 	{
 		return NULL;
 	}
-	g_ft_malloc.large_block_count++;
-	g_ft_malloc.large_allocated_used += size;
-	g_ft_malloc.large_allocated += ALIGN(size + ALIGNED_HEADER_SIZE, sysconf(_SC_PAGESIZE));
-
+	
 	AllocBlockHeader * header = (AllocBlockHeader *)address;
-	header->size = size;
-	header->prev = NULL;
-	header->next = g_ft_malloc.large_blocks;
-	g_ft_malloc.large_blocks = header;
-	if (header->next != NULL)
-	{
-		header->next->prev = header;
-	}
+	header->size = aligned_size - ALIGNED_HEADER_SIZE;
+
+	ADD_TO_LINKED_LIST(g_ft_malloc.used_large_blocks, header);
 	return FROM_HEADER_TO_BUFFER_ADDR(address);
 }

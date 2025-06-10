@@ -19,18 +19,20 @@ void unit_test_perf(
 )
 {
 	void ** ptrs = malloc_func(TEST_COUNT * sizeof(void *));
+	printf("Malloc\n");
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
 		ptrs[i] = malloc_func(sizes[i]);
-		// memset(ptrs[i], 0, sizes[i]);
+		memset(ptrs[i], 0, sizes[i]);
 	}
+	printf("Realloc\n");
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
 		const float factor = (rand() % 100) / 50.0f;
 		const size_t new_size = sizes[i] * factor;
-
+		
 		ptrs[i] = realloc_func(ptrs[i], new_size);
-		// memset(ptrs[i], 0, new_size);
+		memset(ptrs[i], 0, new_size);
 	}
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
@@ -45,7 +47,7 @@ void test_perf()
 	size_t * sizes = malloc(TEST_COUNT * sizeof(size_t));
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
-		sizes[i] = (rand() % 10000) + 1;
+		sizes[i] = (rand() % 1000) + 1;
 	}
 
 	double start_time = (clock() / (double)CLOCKS_PER_SEC);
@@ -106,36 +108,13 @@ void test_classic()
 	{
 		free(ptrs[i]);
 	}
-
-	//#########################################################
-
-	size_t size_count = 10000;
-	size_t * sizes = malloc(size_count * sizeof(size_t));
-	for (int i = 0; i < size_count; i++)
-	{
-		sizes[i] = (rand() % 100000) + 1;
-	}
-
-	void ** _ptrs = malloc(size_count * sizeof(void *));
-	for (int i = 0; i < size_count; i++)
-	{
-		_ptrs[i] = malloc(sizes[i]);
-	}
-	printf("\n");
-	show_alloc_mem_stat();
-	for (int i = 0; i < size_count; i++)
-	{
-		free(_ptrs[i]);
-	}
-	free(_ptrs);
-	free(sizes);
 }
 
 int main()
 {
 	srand((unsigned int)time(NULL));
 
-	// test_classic();
+	test_classic();
 	// test_perf();
 
 	return 0;
