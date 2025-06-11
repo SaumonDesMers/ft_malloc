@@ -96,7 +96,6 @@ extern FtMallocGlobal g_ft_malloc;
 void * allocate_memory(void * address, size_t size);
 
 AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_size);
-void remove_alloc_zone(AllocZoneHeader ** first_zone, AllocZoneHeader * zone);
 
 void * alloc_block(AllocZoneHeader * first_zone, size_t alloc_size);
 void free_block(AllocBlockHeader * block_address);

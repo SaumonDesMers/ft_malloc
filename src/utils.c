@@ -44,12 +44,6 @@ AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_siz
 	return new_zone;
 }
 
-void remove_alloc_zone(AllocZoneHeader ** first_zone, AllocZoneHeader * zone)
-{
-	REMOVE_FROM_LINKED_LIST(*first_zone, zone);
-	munmap(zone, zone->total_allocated);
-}
-
 void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 {
 	while (zone)
