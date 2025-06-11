@@ -16,22 +16,6 @@ void * allocate_memory(void * address, size_t size)
 }
 
 
-int detect_linked_list_cycle(AllocBlockHeader * head)
-{
-	AllocBlockHeader * slow = head;
-	AllocBlockHeader * fast = head;
-
-	while (fast && fast->next)
-	{
-		slow = slow->next;
-		fast = fast->next->next;
-
-		if (slow == fast)
-			return 1;
-	}
-	return 0;
-}
-
 AllocZoneHeader * add_alloc_zone(AllocZoneHeader ** first_zone, size_t block_size)
 {
 	// Ensure that the block size is large enough to hold the AllocZoneHeader header.

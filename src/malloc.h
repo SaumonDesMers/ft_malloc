@@ -102,9 +102,4 @@ void * intern_malloc(size_t size);
 void * intern_realloc(void * ptr, size_t size);
 void intern_free(void * ptr);
 
-
-int check_range_in_list(void * ptr, size_t size, AllocBlockHeader * header);
-int check_range_in_zone(void * ptr, size_t size, AllocZoneHeader * header);
-int check_range(void * ptr, size_t size);
-
 #endif // MALLOC_H
