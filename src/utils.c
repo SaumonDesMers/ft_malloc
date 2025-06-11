@@ -54,7 +54,6 @@ void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 {
 	while (zone)
 	{
-		detect_linked_list_cycle(zone->free_blocks);
 		AllocBlockHeader * free_block = zone->free_blocks;
 		while (free_block)
 		{
@@ -72,12 +71,11 @@ void * alloc_block(AllocZoneHeader * zone, size_t alloc_size)
 					// Get the real remaining size
 					free_block->size = (char *)alloc_block + free_block->size - (char *)free_block;
 					
-					// Update previous node
 					if (free_block->prev)
 						free_block->prev->next = free_block;
 					else
 						zone->free_blocks = free_block;
-					// Update next node
+					
 					if (free_block->next)
 						free_block->next->prev = free_block;
 				}

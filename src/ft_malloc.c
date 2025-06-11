@@ -42,17 +42,18 @@ void * intern_malloc(size_t size)
 
 	AllocBlockHeader * free_large_block = g_ft_malloc.free_large_blocks;
 
-	while (free_large_block && free_large_block->size < size)
+	const size_t aligned_size = ALIGNED_LARGE_BLOCK_SIZE(size);
+	while (free_large_block && ALIGNED_LARGE_BLOCK_SIZE(free_large_block->size) == aligned_size)
 		free_large_block = free_large_block->next;
 	
 	if (free_large_block)
 	{
+		free_large_block->size = size;
 		REMOVE_FROM_LINKED_LIST(g_ft_malloc.free_large_blocks, free_large_block);
 		ADD_TO_LINKED_LIST(g_ft_malloc.used_large_blocks, free_large_block);
 		return FROM_HEADER_TO_BUFFER_ADDR(free_large_block);
 	}
 	
-	size_t aligned_size = ALIGN(size + ALIGNED_HEADER_SIZE, sysconf(_SC_PAGESIZE));
 	void * address = allocate_memory(NULL, aligned_size);
 	if (address == MAP_FAILED)
 	{
@@ -60,7 +61,7 @@ void * intern_malloc(size_t size)
 	}
 	
 	AllocBlockHeader * header = (AllocBlockHeader *)address;
-	header->size = aligned_size - ALIGNED_HEADER_SIZE;
+	header->size = size;
 
 	ADD_TO_LINKED_LIST(g_ft_malloc.used_large_blocks, header);
 	return FROM_HEADER_TO_BUFFER_ADDR(address);

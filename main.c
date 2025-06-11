@@ -19,13 +19,11 @@ void unit_test_perf(
 )
 {
 	void ** ptrs = malloc_func(TEST_COUNT * sizeof(void *));
-	printf("Malloc\n");
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
 		ptrs[i] = malloc_func(sizes[i]);
 		memset(ptrs[i], 0, sizes[i]);
 	}
-	printf("Realloc\n");
 	for (int i = 0; i < TEST_COUNT; i++)
 	{
 		const float factor = (rand() % 100) / 50.0f;

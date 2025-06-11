@@ -33,7 +33,8 @@ void * intern_realloc(void * ptr, size_t size)
 	
 	AllocBlockHeader * header = FROM_BUFFER_TO_HEADER_ADDR(ptr);
 
-	if (header->size >= size)
+	if ((header->size <= SMALL_ALLOC_SIZE && header->size >= size) ||
+		(header->size > SMALL_ALLOC_SIZE && ALIGNED_LARGE_BLOCK_SIZE(header->size) >= size))
 	{
 		return ptr;
 	}
